@@ -11,14 +11,8 @@
  */
 import Foundation
 
-@objc(AEPTargetPrefetchObject)
-public class TargetPrefetch: NSObject, Codable {
-    public let name: String?
-    public let mboxParameters: [String: String]?
-    public let targetParameters: TargetParameters?
-    public init(name: String? = nil, mboxParameters: [String: String]? = nil, targetParameters: TargetParameters? = nil) {
-        self.name = name
-        self.mboxParameters = mboxParameters
-        self.targetParameters = targetParameters
+internal extension TargetOrder {
+    func convert() -> Order {
+        return Order(id: orderId, total: total, purchasedProductIds: purchasedProductIds)
     }
 }

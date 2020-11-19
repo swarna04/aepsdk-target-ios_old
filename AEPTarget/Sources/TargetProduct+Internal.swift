@@ -9,16 +9,11 @@
  OF ANY KIND, either express or implied. See the License for the specific language
  governing permissions and limitations under the License.
  */
+
 import Foundation
 
-@objc(AEPTargetPrefetchObject)
-public class TargetPrefetch: NSObject, Codable {
-    public let name: String?
-    public let mboxParameters: [String: String]?
-    public let targetParameters: TargetParameters?
-    public init(name: String? = nil, mboxParameters: [String: String]? = nil, targetParameters: TargetParameters? = nil) {
-        self.name = name
-        self.mboxParameters = mboxParameters
-        self.targetParameters = targetParameters
+internal extension TargetProduct {
+    func convert() -> Product {
+        return Product(id: productId, categoryId: categoryId)
     }
 }

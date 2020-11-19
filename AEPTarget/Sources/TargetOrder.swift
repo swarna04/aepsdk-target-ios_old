@@ -12,4 +12,13 @@
 import Foundation
 
 @objc(AEPTargetOrder)
-public class TargetOrder: NSObject {}
+public class TargetOrder: NSObject, Codable {
+    public let orderId: String
+    public let total: Double?
+    public let purchasedProductIds: [String]?
+    public init(id: String, total: Double? = nil, purchasedProductIds: [String]? = nil) {
+        orderId = id
+        self.total = total
+        self.purchasedProductIds = purchasedProductIds
+    }
+}

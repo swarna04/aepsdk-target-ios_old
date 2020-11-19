@@ -18,9 +18,32 @@ enum TargetConstants {
     static let EXTENSION_VERSION = "3.0.0-beta.1"
     static let LOG_PREFIX = FRIENDLY_NAME
 
+    enum SharedState {
+        static let CONFIGURATION = "com.adobe.module.configuration"
+        static let LIFECYCLE = "com.adobe.module.lifecycle"
+        static let IDENTITY = "com.adobe.module.identity"
+        enum keys {
+            static let GLOBAL_CONFIG_PRIVACY = "global.privacy"
+            static let TARGET_CLIENT_CODE = "target.clientCode"
+            static let TARGET_PREVIEW_ENABLED = "target.previewEnabled"
+            static let TARGET_NETWORK_TIMEOUT = "target.timeout"
+            static let TARGET_ENVIRONMENT_ID = "target.environmentId"
+            static let TARGET_PROPERTY_TOKEN = "target.propertyToken"
+            static let TARGET_SESSION_TIMEOUT = "target.sessionTimeout"
+            static let TARGET_SERVER = "target.server"
+        }
+
+        enum values {
+            static let GLOBAL_CONFIG_PRIVACY_OPT_IN = "optedin"
+            static let GLOBAL_CONFIG_PRIVACY_OPT_OUT = "optedout"
+            static let GLOBAL_CONFIG_PRIVACY_OPT_UNKNOWN = "optunknown"
+        }
+    }
+
     enum EventName {
         static let LOAD_REQUEST = "TargetLoadRequest"
         static let PREFETCH_REQUESTS = "prefetch"
+        static let PREFETCH_RESPOND = "prefetchRespond"
         static let REQUEST_IDENTITY = "TargetRequestIdentity"
         static let REQUEST_RESET = "TargetRequestReset"
         static let CLEAR_PREFETCH_CACHE = "TargetClearPrefetchCache"
@@ -31,6 +54,8 @@ enum TargetConstants {
 
     enum EventDataKeys {
         static let TARGET_PARAMETERS = "targetparams"
+        static let PREFETCH_REQUESTS = "prefetch"
+        static let PREFETCH_ERROR = "prefetcherror"
         static let LOAD_REQUESTS = "request"
         static let THIRD_PARTY_ID = "thirdpartyid"
         static let RESET_EXPERIENCE = "resetexperience"

@@ -16,22 +16,64 @@ import Foundation
 
 @objc public extension Target {
     /// Prefetch multiple Target mboxes simultaneously.
-    /// Executes a prefetch request to your configured Target server with the ACPTargetPrefetchObject list provided
+    ///
+    /// Executes a prefetch request to your configured Target server with the TargetPrefetchObject list provided
     /// in the prefetchObjectArray parameter. This prefetch request will use the provided parameters for all of
     /// the prefetches made in this request. The callback will be executed when the prefetch has been completed, returning
-    /// an error object, nil if the prefetch was successful or error description if the prefetch was unsuccessful.
+    /// an error object, AEPError.none if the prefetch was successful or error description if the prefetch was unsuccessful.
     /// The prefetched mboxes are cached in memory for the current application session and returned when requested.
     /// - Parameters:
     ///   - prefetchObjectArray: an array of ACPTargetPrefetchObject representing the desired mboxes to prefetch
     ///   - targetParameters: a TargetParameters object containing parameters for all the mboxes in the request array
-    ///   - completion: the callback `closure` which will be called after the prefetch is complete.  The error parameter in the callback will be nil if the prefetch completed successfully, or will contain error message otherwise
-    static func prefetchContent(prefetchObjectArray _: [TargetPrefetch], targetParameters: TargetParameters, completion _: @escaping (AEPError) -> Void) {
-        // TODO: need to verify input parameters
-        // TODO: need to convert "targetParameters" to [String:Any] array
-        let eventData = [TargetConstants.EventDataKeys.TARGET_PARAMETERS: targetParameters]
+    ///   - completion: the callback `closure` which will be called after the prefetch is complete.  The parameter in the callback will be AEPError.none if the prefetch completed successfully, or will contain error message otherwise
+    @objc(prefetchContent:withParameters:callback:)
+    static func prefetchContent(prefetchObjectArray: [TargetPrefetch], targetParameters: TargetParameters?, completion: ((AEPError) -> Void)?) {
+        // TODO: how to pass useful error message to clients by AEPError??
+        guard let completion = completion else {
+            return
+        }
+        guard !prefetchObjectArray.isEmpty else {
+            // log
+            completion(.unexpected)
+            return
+        }
+        var prefetchArray: [[String: Any]] = Array()
+        for prefetch in prefetchObjectArray {
+            if let dict = prefetch.toDictionary() {
+                prefetchArray.append(dict)
+            } else {
+                // log
+            }
+        }
+        guard !prefetchArray.isEmpty else {
+            // log
+            completion(.unexpected)
+            return
+        }
+
+        var eventData: [String: Any] = [TargetConstants.EventDataKeys.PREFETCH_REQUESTS: prefetchArray]
+        if let targetParametersDict = targetParameters.asDictionary() {
+            eventData[TargetConstants.EventDataKeys.TARGET_PARAMETERS] = targetParametersDict
+        }
+
         let event = Event(name: TargetConstants.EventName.PREFETCH_REQUESTS, type: EventType.target, source: EventSource.requestContent, data: eventData)
-        MobileCore.dispatch(event: event) { _ in
-            // TODO:
+        guard !prefetchObjectArray.isEmpty else {
+            // log
+            completion(.unexpected)
+            return
+        }
+
+        MobileCore.dispatch(event: event) { responseEvent in
+
+            guard let responseEvent = responseEvent else {
+                completion(.callbackTimeout)
+                return
+            }
+            if let _ = responseEvent.data?[TargetConstants.EventDataKeys.PREFETCH_ERROR] {
+                completion(.unexpected)
+                return
+            }
+            completion(.none)
         }
     }
 
