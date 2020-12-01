@@ -11,12 +11,18 @@
  */
 import Foundation
 
-@objc(AEPTargetPrefetchObject)
-public class TargetPrefetch: NSObject, Codable {
-    public let name: String?
-    public let targetParameters: TargetParameters?
-    public init(name: String? = nil, targetParameters: TargetParameters? = nil) {
-        self.name = name
-        self.targetParameters = targetParameters
+internal extension TargetParameters {
+    func toDictionary() -> [String: Any]? {
+        asDictionary()
+    }
+
+    static func from(dictionary: [String: Any]?) -> TargetParameters? {
+        guard let dictionary = dictionary else {
+            return nil
+        }
+        if let jsonData = try? JSONSerialization.data(withJSONObject: dictionary), let prefetchObject = try? JSONDecoder().decode(TargetParameters.self, from: jsonData) {
+            return prefetchObject
+        }
+        return nil
     }
 }

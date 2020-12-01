@@ -52,7 +52,7 @@ import Foundation
         }
 
         var eventData: [String: Any] = [TargetConstants.EventDataKeys.PREFETCH_REQUESTS: prefetchArray]
-        if let targetParametersDict = targetParameters.asDictionary() {
+        if let targetParametersDict = targetParameters?.toDictionary() {
             eventData[TargetConstants.EventDataKeys.TARGET_PARAMETERS] = targetParametersDict
         }
 

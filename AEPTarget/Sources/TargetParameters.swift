@@ -23,15 +23,4 @@ public class TargetParameters: NSObject, Codable {
         self.order = order
         self.product = product
     }
-
-    public func toDictionary() -> [String: Any]? {
-        asDictionary()
-    }
-
-    public static func from(dictionary: [String: Any]) -> TargetParameters? {
-        if let jsonData = try? JSONSerialization.data(withJSONObject: dictionary), let prefetchObject = try? JSONDecoder().decode(TargetParameters.self, from: jsonData) {
-            return prefetchObject
-        }
-        return nil
-    }
 }

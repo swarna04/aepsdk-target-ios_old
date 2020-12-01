@@ -23,15 +23,16 @@ internal extension TargetPrefetch {
         return nil
     }
 
-    func convert() -> Mbox {
-        var mbox = Mbox()
-        mbox.name = name
-        mbox.order = targetParameters?.order?.convert()
-        mbox.product = targetParameters?.product?.convert()
-        // TODO: filter parameters if contains key "at_property"
-        // TODO: attache lifecycle data to mbox
-        mbox.parameters = targetParameters?.parameters
-        mbox.profileParameters = targetParameters?.profileParameters
-        return mbox
+    static func from(dicts: [[String: Any]]?) -> [TargetPrefetch]? {
+        guard let dicts = dicts else {
+            return nil
+        }
+        var prefetches = [TargetPrefetch]()
+        for dict in dicts {
+            if let prefetch = TargetPrefetch.from(dictionary: dict) {
+                prefetches.append(prefetch)
+            }
+        }
+        return prefetches
     }
 }

@@ -17,13 +17,47 @@ enum TargetConstants {
     static let FRIENDLY_NAME = "Target"
     static let EXTENSION_VERSION = "3.0.0-beta.1"
     static let LOG_PREFIX = FRIENDLY_NAME
+    static let DATASTORE_NAME = EXTENSION_NAME
+    enum StorageKeys {
+        static let SESSION_TIMESTAMP = "SESSION_TIMESTAMP"
+        static let TNT_ID = "TNT_ID"
+        static let EDGE_HOST = "EDGE_HOST"
+    }
+
+    enum IDENTITY {
+        static let EXTENSION_NAME = "com.adobe.module.identity"
+        enum SharedState {
+            enum Keys {
+                static let VISITOR_ID_MID = "mid"
+                static let VISITOR_ID_BLOB = "blob"
+                static let VISITOR_ID_LOCATION_HINT = "locationhint"
+                static let VISITOR_IDS_LIST = "visitoridslist"
+                static let ADVERTISING_IDENTIFIER = "advertisingidentifier"
+            }
+        }
+    }
+
+    enum CONFIGURATION {
+        static let EXTENSION_NAME = "com.adobe.module.configuration"
+        enum SharedState {
+            enum Keys {
+                static let GLOBAL_CONFIG_PRIVACY = "global.privacy"
+            }
+
+            enum Values {
+                static let GLOBAL_CONFIG_PRIVACY_OPT_IN = "optedin"
+                static let GLOBAL_CONFIG_PRIVACY_OPT_OUT = "optedout"
+                static let GLOBAL_CONFIG_PRIVACY_OPT_UNKNOWN = "optunknown"
+            }
+        }
+    }
+
+    enum LIFECYCLE {
+        static let EXTENSION_NAME = "com.adobe.module.lifecycle"
+    }
 
     enum SharedState {
-        static let CONFIGURATION = "com.adobe.module.configuration"
-        static let LIFECYCLE = "com.adobe.module.lifecycle"
-        static let IDENTITY = "com.adobe.module.identity"
-        enum keys {
-            static let GLOBAL_CONFIG_PRIVACY = "global.privacy"
+        enum Keys {
             static let TARGET_CLIENT_CODE = "target.clientCode"
             static let TARGET_PREVIEW_ENABLED = "target.previewEnabled"
             static let TARGET_NETWORK_TIMEOUT = "target.timeout"
@@ -31,12 +65,6 @@ enum TargetConstants {
             static let TARGET_PROPERTY_TOKEN = "target.propertyToken"
             static let TARGET_SESSION_TIMEOUT = "target.sessionTimeout"
             static let TARGET_SERVER = "target.server"
-        }
-
-        enum values {
-            static let GLOBAL_CONFIG_PRIVACY_OPT_IN = "optedin"
-            static let GLOBAL_CONFIG_PRIVACY_OPT_OUT = "optedout"
-            static let GLOBAL_CONFIG_PRIVACY_OPT_UNKNOWN = "optunknown"
         }
     }
 
@@ -68,5 +96,7 @@ enum TargetConstants {
         static let ORDER_PARAMETERS = "orderparameters"
         static let PRODUCT_PARAMETERS = "productparameters"
         static let PROFILE_PARAMETERS = "profileparams"
+        // shared sate
+        static let TNT_ID = "tntid"
     }
 }
