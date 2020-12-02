@@ -24,8 +24,8 @@ class TargetEventTests: XCTestCase {
     }
 
     func testPrefetchObjectArray() throws {
-        let prefetchDict_1 = TargetPrefetch(name: "prefetch_1", mboxParameters: ["status": "platinum"], targetParameters: TargetParameters(parameters: ["status": "platinum"], profileParameters: ["age": "20"], order: TargetOrder(id: "order_1", total: 12.45, purchasedProductIds: ["product_1"]), product: TargetProduct(productId: "product_1", categoryId: "category_1"))).toDictionary()
-        let prefetchDict_2 = TargetPrefetch(name: "prefetch_1", mboxParameters: ["status": "platinum"], targetParameters: TargetParameters(parameters: ["status": "platinum"], profileParameters: ["age": "20"], order: TargetOrder(id: "order_1", total: 12.45, purchasedProductIds: ["product_1"]), product: TargetProduct(productId: "product_1", categoryId: "category_1"))).toDictionary()
+        let prefetchDict_1 = TargetPrefetch(name: "prefetch_1", targetParameters: TargetParameters(parameters: ["status": "platinum"], profileParameters: ["age": "20"], order: TargetOrder(id: "order_1", total: 12.45, purchasedProductIds: ["product_1"]), product: TargetProduct(productId: "product_1", categoryId: "category_1"))).toDictionary()
+        let prefetchDict_2 = TargetPrefetch(name: "prefetch_1", targetParameters: TargetParameters(parameters: ["status": "platinum"], profileParameters: ["age": "20"], order: TargetOrder(id: "order_1", total: 12.45, purchasedProductIds: ["product_1"]), product: TargetProduct(productId: "product_2", categoryId: "category_1"))).toDictionary()
         let eventData = [TargetConstants.EventDataKeys.PREFETCH_REQUESTS: [prefetchDict_1, prefetchDict_2]]
         let event = Event(name: TargetConstants.EventName.PREFETCH_REQUESTS, type: EventType.target, source: EventSource.requestContent, data: eventData as [String: Any])
         guard let array: [TargetPrefetch] = event.prefetchObjectArray else {
@@ -36,6 +36,19 @@ class TargetEventTests: XCTestCase {
         XCTAssertEqual("prefetch_1", array[0].name)
         XCTAssertEqual("20", array[0].targetParameters?.profileParameters?["age"])
         XCTAssertEqual("order_1", array[0].targetParameters?.order?.orderId)
-        XCTAssertEqual("product_1", array[0].targetParameters?.product?.productId)
+        XCTAssertEqual("product_2", array[1].targetParameters?.product?.productId)
+    }
+
+    func testTargetParameters() throws {
+        let targetParameters = TargetParameters(parameters: ["status": "platinum"], profileParameters: ["age": "20"], order: TargetOrder(id: "order_1", total: 12.45, purchasedProductIds: ["product_1"]), product: TargetProduct(productId: "product_1", categoryId: "category_1"))
+        let targetParametersDict = targetParameters.toDictionary()
+        let eventData = [TargetConstants.EventDataKeys.TARGET_PARAMETERS: targetParametersDict]
+        let event = Event(name: TargetConstants.EventName.PREFETCH_REQUESTS, type: EventType.target, source: EventSource.requestContent, data: eventData as [String: Any])
+        guard let parameters = event.targetParameters else {
+            XCTFail()
+            return
+        }
+        XCTAssertEqual("20", parameters.profileParameters?["age"])
+        XCTAssertEqual("order_1", parameters.order?.orderId)
     }
 }

@@ -185,8 +185,9 @@
 		78D503122551FCCE00966553 /* Tests */ = {
 			isa = PBXGroup;
 			children = (
+				BB0C91602577640200F635B8 /* UnitTests */,
+				BB0C915F257763E600F635B8 /* FunctionalTests */,
 				78D503132551FCCE00966553 /* TargetTests.swift */,
-				BB9C86EE255C9C90007AEF8B /* Event+TargetTests.swift */,
 				78D503152551FCCE00966553 /* Info.plist */,
 			);
 			path = Tests;
@@ -199,6 +200,21 @@
 				AE18F68D21AC04DBA3C71C11 /* Pods_AEPTargetTests.framework */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		BB0C915F257763E600F635B8 /* FunctionalTests */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = FunctionalTests;
+			sourceTree = "<group>";
+		};
+		BB0C91602577640200F635B8 /* UnitTests */ = {
+			isa = PBXGroup;
+			children = (
+				BB9C86EE255C9C90007AEF8B /* Event+TargetTests.swift */,
+			);
+			path = UnitTests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */

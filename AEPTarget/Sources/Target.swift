@@ -128,7 +128,7 @@ public class Target: NSObject, Extension {
         let url = generateTargetDeliveryURL(targetServer: targetServer, clientCode: clientCode)
         // https://developers.adobetarget.com/api/delivery-api/#tag/Delivery-API
         let request = NetworkRequest(url: URL(string: url)!, httpMethod: .post, connectPayload: requestJson, httpHeaders: headers, connectTimeout: DEFAULT_NETWORK_TIMEOUT, readTimeout: DEFAULT_NETWORK_TIMEOUT)
-
+        stopEvents()
         networkService.connectAsync(networkRequest: request) { connection in
             guard let data = connection.data, let responseDict = try? JSONDecoder().decode([String: AnyCodable].self, from: data), let dict: [String: Any] = AnyCodable.toAnyDictionary(dictionary: responseDict) else {
                 self.dispatchPrefetchErrorEvent(triggerEvent: event, errorMessage: "Target response parser initialization failed")
@@ -157,6 +157,7 @@ public class Target: NSObject, Extension {
             self.dispatch(event: event.createResponseEvent(name: TargetConstants.EventName.PREFETCH_RESPOND, type: EventType.target, source: EventSource.responseContent, data: nil))
             // TODO: removeDuplicateLoadedMboxes
             // TODO: notifications.clear()
+            self.startEvents()
         }
     }
 
