@@ -13,112 +13,62 @@ import AEPIdentity
 import AEPServices
 import Foundation
 
-class DeliveryRequestBuilder {
-    private static let CHANNEL_MOBILE = "mobile"
-    private static let COLOR_DEPTH_32 = 32
+// MARK: - Delivery Request
 
-    private static var systemInfoService: SystemInfoService {
-        ServiceProvider.shared.systemInfoService
-    }
-
-    static func build(tntid: String?, thirdPartyId: String?, identitySharedState: [String: Any], configurationSharedState _: [String: Any], lifecycleSharedState: [String: Any], targetPrefetchArray: [TargetPrefetch], targetParameters: TargetParameters?) -> DeliveryRequest? {
-        let targetIDs = generateTargetIDsBy(tntid: tntid, thirdPartyId: thirdPartyId, identitySharedState: identitySharedState)
-        let prefetch = generatePrefetchBy(targetPrefetchArray: targetPrefetchArray, lifecycleSharedState: lifecycleSharedState, globalParameters: targetParameters)
-        let experienceCloud = generateExperienceCloudInfoBy(identitySharedState)
-        guard let context = generateTargetContextBy() else {
-            return nil
-        }
-        return DeliveryRequest(id: targetIDs, context: context, experienceCloud: experienceCloud, prefetch: prefetch)
-    }
-
-    private static func generateTargetIDsBy(tntid: String?, thirdPartyId: String?, identitySharedState: [String: Any]) -> TargetIDs? {
-        let customerIds = identitySharedState[TargetConstants.IDENTITY.SharedState.Keys.VISITOR_ID_MID] as? [CustomIdentity]
-        return TargetIDs(tntId: tntid, thirdPartyId: thirdPartyId, marketingCloudVisitorId: identitySharedState[TargetConstants.IDENTITY.SharedState.Keys.VISITOR_ID_MID] as? String, customerIds: CustomerID.from(customIdentities: customerIds))
-    }
-
-    private static func generateExperienceCloudInfoBy(_ identitySharedState: [String: Any]) -> ExperienceCloudInfo? {
-        let audienceManager = AudienceManagerInfo(blob: identitySharedState[TargetConstants.IDENTITY.SharedState.Keys.VISITOR_ID_BLOB] as? String, locationHint: identitySharedState[TargetConstants.IDENTITY.SharedState.Keys.VISITOR_ID_LOCATION_HINT] as? Int)
-        let analytics = AnalyticsInfo(logging: .client_side)
-        return ExperienceCloudInfo(audienceManager: audienceManager, analytics: analytics)
-    }
-
-    private static func generateTargetContextBy() -> TargetContext? {
-        // TODO: systemInfoService.getDeviceType() ??
-        let mobilePlatform = MobilePlatform(deviceName: systemInfoService.getDeviceName(), deviceType: .phone, platformType: .ios)
-        // TODO: systemInfoService.getApplicationPackageName() ???
-        // TODO: systemInfoService.getApplicationVersion() ??
-        let application = AppInfo(id: nil, name: systemInfoService.getApplicationName(), version: nil)
-        // TODO: systemInfoService.getCurrentOrientation() ??
-        let screen = Screen(colorDepth: COLOR_DEPTH_32, width: systemInfoService.getDisplayInformation().width, height: systemInfoService.getDisplayInformation().height, orientation: nil)
-        return TargetContext(channel: CHANNEL_MOBILE, userAgent: systemInfoService.getDefaultUserAgent(), mobilePlatform: mobilePlatform, application: application, screen: screen, timeOffsetInMinutes: Date().getUnixTimeInSeconds())
-    }
-
-    private static func generatePrefetchBy(targetPrefetchArray: [TargetPrefetch], lifecycleSharedState: [String: Any], globalParameters: TargetParameters?) -> Prefetch? {
-        guard let lifecycleDataDict = lifecycleSharedState as? [String: String] else {
-            // TODO: log
-            return nil
-        }
-
-        var mboxes = [Mbox]()
-
-        for (index, prefetch) in targetPrefetchArray.enumerated() {
-            let parameterWithLifecycleData = merge(newDictionary: lifecycleDataDict, to: prefetch.targetParameters?.parameters)
-            let parameters = merge(newDictionary: globalParameters?.parameters, to: parameterWithLifecycleData)
-            let profileParameters = merge(newDictionary: globalParameters?.profileParameters, to: prefetch.targetParameters?.profileParameters)
-            let order = findFirstExistingOrder(order: prefetch.targetParameters?.order, globalOrder: globalParameters?.order)
-            let product = findFirstExistingProduct(product: prefetch.targetParameters?.product, globalProduct: globalParameters?.product)
-            let mbox = Mbox(name: prefetch.name, index: index, parameters: parameters, profileParameters: profileParameters, order: order, product: product)
-            mboxes.append(mbox)
-        }
-        return Prefetch(mboxes: mboxes)
-    }
-
-    private static func merge(newDictionary: [String: String]?, to dictionary: [String: String]?) -> [String: String]? {
-        if let newDictionary = newDictionary, let dictionary = dictionary {
-            return dictionary.merging(newDictionary) { _, new in new }
-        }
-
-        if let newDictionary = newDictionary {
-            return newDictionary
-        }
-
-        if let dictionary = dictionary {
-            return dictionary
-        }
-
-        return nil
-    }
-
-    private static func findFirstExistingOrder(order: TargetOrder?, globalOrder: TargetOrder?) -> Order? {
-        if let order = order {
-            return order.convert()
-        }
-        if let globalOrder = globalOrder {
-            return globalOrder.convert()
-        }
-        return nil
-    }
-
-    private static func findFirstExistingProduct(product: TargetProduct?, globalProduct: TargetProduct?) -> Product? {
-        if let product = product {
-            return product.convert()
-        }
-        if let globalProduct = globalProduct {
-            return globalProduct.convert()
-        }
-        return nil
-    }
-}
-
+/// Struct to represent Target Delivery API call JSON request.
+/// For more details refer to https://developers.adobetarget.com/api/delivery-api/#tag/Delivery-API
 struct DeliveryRequest: Codable {
+    static let LOG_TAG = "Target"
+
     var id: TargetIDs?
     var context: TargetContext
     var experienceCloud: ExperienceCloudInfo?
     var prefetch: Prefetch?
+
     func toJSON() -> String? {
-        return nil
+        let jsonEncoder = JSONEncoder()
+        guard let jsonData = try? jsonEncoder.encode(self) else {
+            Log.error(label: DeliveryRequest.LOG_TAG, "Failed to encode the request object (as JSON): \(self) ")
+            return nil
+        }
+        return String(data: jsonData, encoding: .utf8)
     }
 }
+
+// MARK: - Delivery Request - id
+
+struct TargetIDs: Codable {
+    var tntId: String?
+    var thirdPartyId: String?
+    var marketingCloudVisitorId: String?
+    var customerIds: [CustomerID]?
+}
+
+struct CustomerID: Codable {
+    var id: String
+    var integrationCode: String
+    var authenticatedState: AuthenticatedState
+
+    /// Converts a `CustomIdentity` array to a `CustomerID` array
+    /// - Parameter customIdentities: an array of `CustomIdentity` objects
+    /// - Returns: an array of `CustomerID` objects
+    static func from(customIdentities: [CustomIdentity]?) -> [CustomerID]? {
+        guard let customIdentities = customIdentities else {
+            return nil
+        }
+
+        var customerIDs = [CustomerID]()
+        for customIdentity in customIdentities {
+            guard let id = customIdentity.identifier, let code = customIdentity.type else {
+                continue
+            }
+            customerIDs.append(CustomerID(id: id, integrationCode: code, authenticatedState: AuthenticatedState.from(authenticationState: customIdentity.authenticationState)))
+        }
+        return customerIDs
+    }
+}
+
+// MARK: - Delivery Request - experienceCloud
 
 struct ExperienceCloudInfo: Codable {
     var audienceManager: AudienceManagerInfo?
@@ -147,38 +97,14 @@ enum AnalyticsLogging: String, Codable {
     case client_side
 }
 
-struct TargetIDs: Codable {
-    var tntId: String?
-    var thirdPartyId: String?
-    var marketingCloudVisitorId: String?
-    var customerIds: [CustomerID]?
-}
-
-struct CustomerID: Codable {
-    var id: String
-    var integrationCode: String
-    var authenticatedState: AuthenticatedState
-
-    static func from(customIdentities: [CustomIdentity]?) -> [CustomerID]? {
-        guard let customIdentities = customIdentities else {
-            return nil
-        }
-
-        var customerIDs = [CustomerID]()
-        for customIdentity in customIdentities {
-            guard let id = customIdentity.identifier, let code = customIdentity.type else {
-                continue
-            }
-            customerIDs.append(CustomerID(id: id, integrationCode: code, authenticatedState: AuthenticatedState.from(authenticationState: customIdentity.authenticationState)))
-        }
-        return customerIDs
-    }
-}
-
 enum AuthenticatedState: String, Codable {
     case unknown
     case authenticated
     case logged_out
+
+    /// Converts a `MobileVisitorAuthenticationState` object to an `AuthenticatedState` object
+    /// - Parameter authenticationState: a `MobileVisitorAuthenticationState` object
+    /// - Returns: an `AuthenticatedState` object
     static func from(authenticationState: MobileVisitorAuthenticationState) -> AuthenticatedState {
         switch authenticationState {
         case .authenticated:
@@ -190,6 +116,8 @@ enum AuthenticatedState: String, Codable {
         }
     }
 }
+
+// MARK: - Delivery Request - context
 
 struct TargetContext: Codable {
     var channel: String
@@ -234,6 +162,12 @@ enum PlatformType: String, Codable {
     case ios
 }
 
+// MARK: - Delivery Request - prefetch
+
+struct Prefetch: Codable {
+    var mboxes: [Mbox]?
+}
+
 struct Mbox: Codable {
     var name: String?
     var index: Int
@@ -261,6 +195,109 @@ struct Order: Codable {
     var purchasedProductIds: [String]?
 }
 
-struct Prefetch: Codable {
-    var mboxes: [Mbox]?
+// MARK: - DeliveryRequestBuilder
+
+enum DeliveryRequestBuilder {
+    private static var systemInfoService: SystemInfoService {
+        ServiceProvider.shared.systemInfoService
+    }
+
+    /// Builds the `DeliveryRequest` object
+    /// - Parameters:
+    ///   - tntid: an UUID generated by the TNT server
+    ///   - thirdPartyId: a string pointer containing the value of the third party id (custom visitor id)
+    ///   - identitySharedState: the shared state of `Identity` extension
+    ///   - lifecycleSharedState: the shared state of `Lifecycle` extension
+    ///   - targetPrefetchArray: an array of ACPTargetPrefetch objects representing the desired mboxes to prefetch
+    ///   - targetParameters: a TargetParameters object containing parameters for all the mboxes in the request array
+    /// - Returns: a `DeliveryRequest` object
+    static func build(tntid: String?, thirdPartyId: String?, identitySharedState: [String: Any], lifecycleSharedState: [String: Any], targetPrefetchArray: [TargetPrefetch], targetParameters: TargetParameters?) -> DeliveryRequest? {
+        let targetIDs = generateTargetIDsBy(tntid: tntid, thirdPartyId: thirdPartyId, identitySharedState: identitySharedState)
+        let prefetch = generatePrefetchBy(targetPrefetchArray: targetPrefetchArray, lifecycleSharedState: lifecycleSharedState, globalParameters: targetParameters)
+        let experienceCloud = generateExperienceCloudInfoBy(identitySharedState)
+        guard let context = generateTargetContextBy() else {
+            return nil
+        }
+        return DeliveryRequest(id: targetIDs, context: context, experienceCloud: experienceCloud, prefetch: prefetch)
+    }
+
+    private static func generateTargetIDsBy(tntid: String?, thirdPartyId: String?, identitySharedState: [String: Any]) -> TargetIDs? {
+        let customerIds = identitySharedState[TargetConstants.IDENTITY.SharedState.Keys.VISITOR_ID_MID] as? [CustomIdentity]
+        return TargetIDs(tntId: tntid, thirdPartyId: thirdPartyId, marketingCloudVisitorId: identitySharedState[TargetConstants.IDENTITY.SharedState.Keys.VISITOR_ID_MID] as? String, customerIds: CustomerID.from(customIdentities: customerIds))
+    }
+
+    private static func generateExperienceCloudInfoBy(_ identitySharedState: [String: Any]) -> ExperienceCloudInfo? {
+        let audienceManager = AudienceManagerInfo(blob: identitySharedState[TargetConstants.IDENTITY.SharedState.Keys.VISITOR_ID_BLOB] as? String, locationHint: identitySharedState[TargetConstants.IDENTITY.SharedState.Keys.VISITOR_ID_LOCATION_HINT] as? Int)
+        let analytics = AnalyticsInfo(logging: .client_side)
+        return ExperienceCloudInfo(audienceManager: audienceManager, analytics: analytics)
+    }
+
+    private static func generateTargetContextBy() -> TargetContext? {
+        // TODO: systemInfoService.getDeviceType() ??
+        let mobilePlatform = MobilePlatform(deviceName: systemInfoService.getDeviceName(), deviceType: .phone, platformType: .ios)
+        // TODO: systemInfoService.getApplicationPackageName() ???
+        // TODO: systemInfoService.getApplicationVersion() ??
+        let application = AppInfo(id: nil, name: systemInfoService.getApplicationName(), version: nil)
+        // TODO: systemInfoService.getCurrentOrientation() ??
+        let screen = Screen(colorDepth: TargetConstants.TargetRequestValue.COLOR_DEPTH_32, width: systemInfoService.getDisplayInformation().width, height: systemInfoService.getDisplayInformation().height, orientation: nil)
+        return TargetContext(channel: TargetConstants.TargetRequestValue.CHANNEL_MOBILE, userAgent: systemInfoService.getDefaultUserAgent(), mobilePlatform: mobilePlatform, application: application, screen: screen, timeOffsetInMinutes: Date().getUnixTimeInSeconds())
+    }
+
+    private static func generatePrefetchBy(targetPrefetchArray: [TargetPrefetch], lifecycleSharedState: [String: Any], globalParameters: TargetParameters?) -> Prefetch? {
+        let lifecycleDataDict = lifecycleSharedState as? [String: String]
+
+        var mboxes = [Mbox]()
+
+        for (index, prefetch) in targetPrefetchArray.enumerated() {
+            let parameterWithLifecycleData = merge(newDictionary: lifecycleDataDict, to: prefetch.targetParameters?.parameters)
+            let parameters = merge(newDictionary: globalParameters?.parameters, to: parameterWithLifecycleData)
+            let profileParameters = merge(newDictionary: globalParameters?.profileParameters, to: prefetch.targetParameters?.profileParameters)
+            let order = findFirstAvailableOrder(order: prefetch.targetParameters?.order, globalOrder: globalParameters?.order)
+            let product = findFirstAvailableProduct(product: prefetch.targetParameters?.product, globalProduct: globalParameters?.product)
+            let mbox = Mbox(name: prefetch.name, index: index, parameters: parameters, profileParameters: profileParameters, order: order, product: product)
+            mboxes.append(mbox)
+        }
+        return Prefetch(mboxes: mboxes)
+    }
+
+    /// Merges the given dictionaries, and only keeps values from the new dictionary for duplicated keys.
+    /// - Parameters:
+    ///   - newDictionary: the new dictionary
+    ///   - dictionary: the original dictionary
+    /// - Returns: a new dictionary with combined key-value pairs
+    private static func merge(newDictionary: [String: String]?, to dictionary: [String: String]?) -> [String: String]? {
+        if let newDictionary = newDictionary, let dictionary = dictionary {
+            return dictionary.merging(newDictionary) { _, new in new }
+        }
+
+        if let newDictionary = newDictionary {
+            return newDictionary
+        }
+
+        if let dictionary = dictionary {
+            return dictionary
+        }
+
+        return nil
+    }
+
+    private static func findFirstAvailableOrder(order: TargetOrder?, globalOrder: TargetOrder?) -> Order? {
+        if let order = order {
+            return order.convert()
+        }
+        if let globalOrder = globalOrder {
+            return globalOrder.convert()
+        }
+        return nil
+    }
+
+    private static func findFirstAvailableProduct(product: TargetProduct?, globalProduct: TargetProduct?) -> Product? {
+        if let product = product {
+            return product.convert()
+        }
+        if let globalProduct = globalProduct {
+            return globalProduct.convert()
+        }
+        return nil
+    }
 }

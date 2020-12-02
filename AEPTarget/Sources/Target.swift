@@ -24,17 +24,7 @@ public class Target: NSObject, Extension {
 
     private let HEADER_CONTENT_TYPE_JSON = "application/json"
 
-    private let dataStore: NamedCollectionDataStore
-
-    private var tntId: String?
-
-    private var thirdPartyId: String?
-
-    private var edgeHost: String?
-
-    private var clientCode: String?
-
-    private var prefetchedMboxJsonDicts = [[String: Any]]()
+    private let targetState: TargetState
 
     private var networkService: Networking {
         return ServiceProvider.shared.networkService
@@ -54,7 +44,7 @@ public class Target: NSObject, Extension {
 
     public required init?(runtime: ExtensionRuntime) {
         self.runtime = runtime
-        dataStore = NamedCollectionDataStore(name: TargetConstants.DATASTORE_NAME)
+        targetState = TargetState()
         super.init()
     }
 
@@ -79,7 +69,7 @@ public class Target: NSObject, Extension {
         guard let configuration = getSharedState(extensionName: TargetConstants.CONFIGURATION.EXTENSION_NAME, event: event), configuration.status == .set else { return false }
         guard getSharedState(extensionName: TargetConstants.LIFECYCLE.EXTENSION_NAME, event: event)?.status == .set else { return false }
         guard getSharedState(extensionName: TargetConstants.IDENTITY.EXTENSION_NAME, event: event)?.status == .set else { return false }
-        guard let clientCode = configuration.value?[TargetConstants.SharedState.Keys.TARGET_CLIENT_CODE] as? String, !clientCode.isEmpty else {
+        guard let clientCode = configuration.value?[TargetConstants.CONFIGURATION.SharedState.Keys.TARGET_CLIENT_CODE] as? String, !clientCode.isEmpty else {
             return false
         }
         return true
@@ -89,11 +79,14 @@ public class Target: NSObject, Extension {
 
     private func handle(event _: Event) {}
 
+    /// Handle prefetch content request
+    /// - Parameter event: an event of type target and  source request content is dispatched by the `EventHub`
     private func prefetchContent(_ event: Event) {
-        guard !isInPreviewMode() else {
+        if isInPreviewMode() {
             dispatchPrefetchErrorEvent(triggerEvent: event, errorMessage: "Target prefetch can't be used while in preview mode")
             return
         }
+
         guard let targetPrefetchArray = TargetPrefetch.from(dicts: event.data?[TargetConstants.EventDataKeys.PREFETCH_REQUESTS] as? [[String: Any]]) else {
             dispatchPrefetchErrorEvent(triggerEvent: event, errorMessage: "Empty or null prefetch requests list")
             return
@@ -101,16 +94,11 @@ public class Target: NSObject, Extension {
 
         let targetParameters = TargetParameters.from(dictionary: event.data?[TargetConstants.EventDataKeys.TARGET_PARAMETERS] as? [String: Any])
 
-        // eventData[TargetConstants.EventDataKeys.TARGET_PARAMETERS]
-
         guard let configurationSharedState = getSharedState(extensionName: TargetConstants.CONFIGURATION.EXTENSION_NAME, event: event)?.value else {
             dispatchPrefetchErrorEvent(triggerEvent: event, errorMessage: "Missing shared state - configuration")
             return
         }
-        guard let privacy = configurationSharedState[TargetConstants.CONFIGURATION.SharedState.Keys.GLOBAL_CONFIG_PRIVACY] as? String, privacy == TargetConstants.CONFIGURATION.SharedState.Values.GLOBAL_CONFIG_PRIVACY_OPT_IN else {
-            dispatchPrefetchErrorEvent(triggerEvent: event, errorMessage: "Privacy status is opted out")
-            return
-        }
+
         guard let lifecycleSharedState = getSharedState(extensionName: TargetConstants.LIFECYCLE.EXTENSION_NAME, event: event)?.value else {
             dispatchPrefetchErrorEvent(triggerEvent: event, errorMessage: "Missing shared state - lifecycle")
             return
@@ -119,15 +107,28 @@ public class Target: NSObject, Extension {
             dispatchPrefetchErrorEvent(triggerEvent: event, errorMessage: "Missing shared state - identity")
             return
         }
-        // TODO: retrieve tntid from prefetch response
-        // TODO: retrieve thirdPartyId from public api call
-        guard let requestJson = DeliveryRequestBuilder.build(tntid: nil, thirdPartyId: nil, identitySharedState: identitySharedState, configurationSharedState: configurationSharedState, lifecycleSharedState: lifecycleSharedState, targetPrefetchArray: targetPrefetchArray, targetParameters: targetParameters)?.toJSON() else {
-            dispatchPrefetchErrorEvent(triggerEvent: event, errorMessage: "Failed to generate request parameter(JSON) for target delivery API")
+
+        guard let privacy = configurationSharedState[TargetConstants.CONFIGURATION.SharedState.Keys.GLOBAL_CONFIG_PRIVACY] as? String, privacy == TargetConstants.CONFIGURATION.SharedState.Values.GLOBAL_CONFIG_PRIVACY_OPT_IN else {
+            dispatchPrefetchErrorEvent(triggerEvent: event, errorMessage: "Privacy status is opted out")
+            return
+        }
+
+        guard let requestJson = DeliveryRequestBuilder.build(tntid: targetState.tntId, thirdPartyId: targetState.thirdPartyId, identitySharedState: identitySharedState, lifecycleSharedState: lifecycleSharedState, targetPrefetchArray: targetPrefetchArray, targetParameters: targetParameters)?.toJSON() else {
+            dispatchPrefetchErrorEvent(triggerEvent: event, errorMessage: "Failed to generate request parameter(JSON) for target delivery API call")
             return
         }
         let headers = [HEADER_CONTENT_TYPE: HEADER_CONTENT_TYPE_JSON]
+
+        let targetServer = configurationSharedState[TargetConstants.CONFIGURATION.SharedState.Keys.TARGET_SERVER] as? String
+        guard let clientCode = configurationSharedState[TargetConstants.CONFIGURATION.SharedState.Keys.TARGET_CLIENT_CODE] as? String else {
+            dispatchPrefetchErrorEvent(triggerEvent: event, errorMessage: "???")
+            return
+        }
+
+        let url = generateTargetDeliveryURL(targetServer: targetServer, clientCode: clientCode)
         // https://developers.adobetarget.com/api/delivery-api/#tag/Delivery-API
-        let request = NetworkRequest(url: URL(string: "")!, httpMethod: .post, connectPayload: requestJson, httpHeaders: headers, connectTimeout: DEFAULT_NETWORK_TIMEOUT, readTimeout: DEFAULT_NETWORK_TIMEOUT)
+        let request = NetworkRequest(url: URL(string: url)!, httpMethod: .post, connectPayload: requestJson, httpHeaders: headers, connectTimeout: DEFAULT_NETWORK_TIMEOUT, readTimeout: DEFAULT_NETWORK_TIMEOUT)
+
         networkService.connectAsync(networkRequest: request) { connection in
             guard let data = connection.data, let responseDict = try? JSONDecoder().decode([String: AnyCodable].self, from: data), let dict: [String: Any] = AnyCodable.toAnyDictionary(dictionary: responseDict) else {
                 self.dispatchPrefetchErrorEvent(triggerEvent: event, errorMessage: "Target response parser initialization failed")
@@ -139,30 +140,21 @@ public class Target: NSObject, Extension {
                 self.dispatchPrefetchErrorEvent(triggerEvent: event, errorMessage: "Errors returned in Target response: \(error)")
             }
 
-            self.updateSessionTimestamp()
+            self.targetState.updateSessionTimestamp()
 
-            if let tntId = response.tntId {
-                self.dataStore.set(key: TargetConstants.StorageKeys.TNT_ID, value: tntId)
-                self.tntId = tntId
-            }
+            if let tntId = response.tntId { self.targetState.updateTntId(tntId) }
+            if let edgeHost = response.edgeHost { self.targetState.updateEdgeHost(edgeHost) }
+            self.createSharedState(data: self.targetState.generateSharedState(), event: nil)
 
-            if let edgeHost = response.edgeHost {
-                self.dataStore.set(key: TargetConstants.StorageKeys.EDGE_HOST, value: edgeHost)
-                self.edgeHost = edgeHost
-            }
-
-            var eventData = [String: Any]()
-            if self.tntId != nil { eventData[TargetConstants.EventDataKeys.TNT_ID] = self.tntId }
-            if self.thirdPartyId != nil { eventData[TargetConstants.EventDataKeys.THIRD_PARTY_ID] = self.thirdPartyId }
-
-            self.createSharedState(data: eventData, event: nil)
-            
             if let mboxes = response.mboxes {
+                var mboxesDictionary = [String: [String: Any]]()
                 for mbox in mboxes {
-                    self.prefetchedMboxJsonDicts.append(mbox)
+                    if let name = mbox[TargetResponse.JSONKeys.MBOXE_NAME] as? String { mboxesDictionary[name] = mbox }
                 }
+                if !mboxesDictionary.isEmpty { self.targetState.mergePrefetchedMboxJson(mboxesDictionary: mboxesDictionary) }
             }
 
+            self.dispatch(event: event.createResponseEvent(name: TargetConstants.EventName.PREFETCH_RESPOND, type: EventType.target, source: EventSource.responseContent, data: nil))
             // TODO: removeDuplicateLoadedMboxes
             // TODO: notifications.clear()
         }
@@ -171,17 +163,24 @@ public class Target: NSObject, Extension {
     // MARK: - Helpers
 
     private func dispatchPrefetchErrorEvent(triggerEvent: Event, errorMessage: String) {
-        // TODO: log
-        dispatch(event: triggerEvent.createResponseEvent(name: TargetConstants.EventName.PREFETCH_RESPOND, type: EventType.userProfile, source: EventSource.responseProfile, data: [TargetConstants.EventDataKeys.PREFETCH_ERROR: errorMessage]))
+        Log.error(label: Target.LOG_TAG, "dispatch prefetch error event")
+        dispatch(event: triggerEvent.createResponseEvent(name: TargetConstants.EventName.PREFETCH_RESPOND, type: EventType.target, source: EventSource.responseContent, data: [TargetConstants.EventDataKeys.PREFETCH_ERROR: errorMessage]))
+    }
+
+    private func generateTargetDeliveryURL(targetServer: String?, clientCode: String) -> String {
+        if let targetServer = targetServer {
+            return String(format: TargetConstants.DELIVERY_API_URL_BASE, targetServer, clientCode, targetState.sessionId)
+        }
+
+        if let host = targetState.edgeHost {
+            return String(format: TargetConstants.DELIVERY_API_URL_BASE, host, clientCode, targetState.sessionId)
+        }
+
+        return String(format: TargetConstants.DELIVERY_API_URL_BASE, String(format: TargetConstants.API_URL_HOST_BASE, clientCode), clientCode, targetState.sessionId)
     }
 
     private func isInPreviewMode() -> Bool {
         // TODO:
         return false
-    }
-
-    private func updateSessionTimestamp() {
-        let timestamp = Date().getUnixTimeInSeconds()
-        dataStore.set(key: TargetConstants.StorageKeys.SESSION_TIMESTAMP, value: timestamp)
     }
 }

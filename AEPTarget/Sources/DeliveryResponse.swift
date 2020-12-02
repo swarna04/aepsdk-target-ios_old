@@ -11,9 +11,12 @@
  */
 import Foundation
 
+/// Struct to represent Target Delivery API call JSON response.
+/// For more details refer to https://developers.adobetarget.com/api/delivery-api/#tag/Delivery-API
 struct DeliveryResponse {
     let responseJson: [String: Any]
 
+    // Exists in Error response
     var errorMessage: String? {
         responseJson[TargetResponse.JSONKeys.MESSAGE] as? String
     }
@@ -41,13 +44,20 @@ enum TargetResponse {
     enum JSONKeys {
         static let MESSAGE = "message"
         static let ID = "id"
+
         // ---- id -----
         static let TNT_ID = "tntId"
         // ---- id -----
+
         static let EDGE_HOST = "edgeHost"
         static let PREFETCH = "prefetch"
+
         // ---- prefetch -----
         static let MBOXES = "mboxes"
         // ---- prefetch -----
+
+        // ---- prefetch - mboxes - mbox -----
+        static let MBOXE_NAME = "name"
+        // ---- prefetch - mboxes - mbox -----
     }
 }

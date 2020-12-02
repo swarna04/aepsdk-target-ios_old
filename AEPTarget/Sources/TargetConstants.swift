@@ -18,54 +18,21 @@ enum TargetConstants {
     static let EXTENSION_VERSION = "3.0.0-beta.1"
     static let LOG_PREFIX = FRIENDLY_NAME
     static let DATASTORE_NAME = EXTENSION_NAME
+    static let DEFAULT_SESSION_TIMEOUT: Int = 30 * 60 // 30 mins
+    static let DELIVERY_API_URL_BASE = "https://%@/rest/v1/delivery/?client=%@&sessionId=%@"
+    static let API_URL_HOST_BASE = "%s.tt.omtrdc.net"
+
     enum StorageKeys {
         static let SESSION_TIMESTAMP = "SESSION_TIMESTAMP"
+        static let SESSION_ID = "SESSION_ID"
+        static let SESSION_TIMEOUT = "SESSION_TIMEOUT"
         static let TNT_ID = "TNT_ID"
         static let EDGE_HOST = "EDGE_HOST"
     }
 
-    enum IDENTITY {
-        static let EXTENSION_NAME = "com.adobe.module.identity"
-        enum SharedState {
-            enum Keys {
-                static let VISITOR_ID_MID = "mid"
-                static let VISITOR_ID_BLOB = "blob"
-                static let VISITOR_ID_LOCATION_HINT = "locationhint"
-                static let VISITOR_IDS_LIST = "visitoridslist"
-                static let ADVERTISING_IDENTIFIER = "advertisingidentifier"
-            }
-        }
-    }
-
-    enum CONFIGURATION {
-        static let EXTENSION_NAME = "com.adobe.module.configuration"
-        enum SharedState {
-            enum Keys {
-                static let GLOBAL_CONFIG_PRIVACY = "global.privacy"
-            }
-
-            enum Values {
-                static let GLOBAL_CONFIG_PRIVACY_OPT_IN = "optedin"
-                static let GLOBAL_CONFIG_PRIVACY_OPT_OUT = "optedout"
-                static let GLOBAL_CONFIG_PRIVACY_OPT_UNKNOWN = "optunknown"
-            }
-        }
-    }
-
-    enum LIFECYCLE {
-        static let EXTENSION_NAME = "com.adobe.module.lifecycle"
-    }
-
-    enum SharedState {
-        enum Keys {
-            static let TARGET_CLIENT_CODE = "target.clientCode"
-            static let TARGET_PREVIEW_ENABLED = "target.previewEnabled"
-            static let TARGET_NETWORK_TIMEOUT = "target.timeout"
-            static let TARGET_ENVIRONMENT_ID = "target.environmentId"
-            static let TARGET_PROPERTY_TOKEN = "target.propertyToken"
-            static let TARGET_SESSION_TIMEOUT = "target.sessionTimeout"
-            static let TARGET_SERVER = "target.server"
-        }
+    enum TargetRequestValue {
+        static let CHANNEL_MOBILE = "mobile"
+        static let COLOR_DEPTH_32 = 32
     }
 
     enum EventName {
@@ -98,5 +65,46 @@ enum TargetConstants {
         static let PROFILE_PARAMETERS = "profileparams"
         // shared sate
         static let TNT_ID = "tntid"
+    }
+
+    enum IDENTITY {
+        static let EXTENSION_NAME = "com.adobe.module.identity"
+        enum SharedState {
+            enum Keys {
+                static let VISITOR_ID_MID = "mid"
+                static let VISITOR_ID_BLOB = "blob"
+                static let VISITOR_ID_LOCATION_HINT = "locationhint"
+                static let VISITOR_IDS_LIST = "visitoridslist"
+                static let ADVERTISING_IDENTIFIER = "advertisingidentifier"
+            }
+        }
+    }
+
+    enum CONFIGURATION {
+        static let EXTENSION_NAME = "com.adobe.module.configuration"
+        enum SharedState {
+            enum Keys {
+                // Core Extension
+                static let GLOBAL_CONFIG_PRIVACY = "global.privacy"
+                // Target Extension
+                static let TARGET_CLIENT_CODE = "target.clientCode"
+                static let TARGET_PREVIEW_ENABLED = "target.previewEnabled"
+                static let TARGET_NETWORK_TIMEOUT = "target.timeout"
+                static let TARGET_ENVIRONMENT_ID = "target.environmentId"
+                static let TARGET_PROPERTY_TOKEN = "target.propertyToken"
+                static let TARGET_SESSION_TIMEOUT = "target.sessionTimeout"
+                static let TARGET_SERVER = "target.server"
+            }
+
+            enum Values {
+                static let GLOBAL_CONFIG_PRIVACY_OPT_IN = "optedin"
+                static let GLOBAL_CONFIG_PRIVACY_OPT_OUT = "optedout"
+                static let GLOBAL_CONFIG_PRIVACY_OPT_UNKNOWN = "optunknown"
+            }
+        }
+    }
+
+    enum LIFECYCLE {
+        static let EXTENSION_NAME = "com.adobe.module.lifecycle"
     }
 }

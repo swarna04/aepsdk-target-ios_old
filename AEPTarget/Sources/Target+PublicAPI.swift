@@ -23,32 +23,28 @@ import Foundation
     /// an error object, AEPError.none if the prefetch was successful or error description if the prefetch was unsuccessful.
     /// The prefetched mboxes are cached in memory for the current application session and returned when requested.
     /// - Parameters:
-    ///   - prefetchObjectArray: an array of ACPTargetPrefetchObject representing the desired mboxes to prefetch
+    ///   - prefetchObjectArray: an array of ACPTargetPrefetch objects representing the desired mboxes to prefetch
     ///   - targetParameters: a TargetParameters object containing parameters for all the mboxes in the request array
     ///   - completion: the callback `closure` which will be called after the prefetch is complete.  The parameter in the callback will be AEPError.none if the prefetch completed successfully, or will contain error message otherwise
     @objc(prefetchContent:withParameters:callback:)
     static func prefetchContent(prefetchObjectArray: [TargetPrefetch], targetParameters: TargetParameters?, completion: ((AEPError) -> Void)?) {
-        // TODO: how to pass useful error message to clients by AEPError??
-        guard let completion = completion else {
-            return
-        }
+        let completion = completion ?? { _ in }
+
         guard !prefetchObjectArray.isEmpty else {
-            // log
+            Log.error(label: Target.LOG_TAG, "Failed to prefetch Target request (the provided request list for mboxes is empty or null)")
             completion(.unexpected)
             return
         }
-        var prefetchArray: [[String: Any]] = Array()
+        var prefetchArray = [[String: Any]]()
         for prefetch in prefetchObjectArray {
             if let dict = prefetch.toDictionary() {
                 prefetchArray.append(dict)
+
             } else {
-                // log
+                Log.error(label: Target.LOG_TAG, "Failed to prefetch Target request (the provided prefetch object can't be converted to [String: Any] dictionary), prefetch => \(prefetch)")
+                completion(.unexpected)
+                return
             }
-        }
-        guard !prefetchArray.isEmpty else {
-            // log
-            completion(.unexpected)
-            return
         }
 
         var eventData: [String: Any] = [TargetConstants.EventDataKeys.PREFETCH_REQUESTS: prefetchArray]
@@ -57,11 +53,6 @@ import Foundation
         }
 
         let event = Event(name: TargetConstants.EventName.PREFETCH_REQUESTS, type: EventType.target, source: EventSource.requestContent, data: eventData)
-        guard !prefetchObjectArray.isEmpty else {
-            // log
-            completion(.unexpected)
-            return
-        }
 
         MobileCore.dispatch(event: event) { responseEvent in
 
@@ -70,6 +61,7 @@ import Foundation
                 return
             }
             if let _ = responseEvent.data?[TargetConstants.EventDataKeys.PREFETCH_ERROR] {
+                // TODO: how to pass useful error message to clients by AEPError??
                 completion(.unexpected)
                 return
             }
