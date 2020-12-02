@@ -29,6 +29,7 @@
 		78D503142551FCCE00966553 /* TargetTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78D503132551FCCE00966553 /* TargetTests.swift */; };
 		78D503162551FCCE00966553 /* AEPTarget.h in Headers */ = {isa = PBXBuildFile; fileRef = 78D503082551FCCE00966553 /* AEPTarget.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		BB0C914A2575F72200F635B8 /* TargetState.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0C91492575F72200F635B8 /* TargetState.swift */; };
+		BB0C915B25775F1100F635B8 /* TargetError.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0C915A25775F1100F635B8 /* TargetError.swift */; };
 		BB1E55892574A35A006632E4 /* TargetParameters+Internal.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1E55882574A35A006632E4 /* TargetParameters+Internal.swift */; };
 		BB1E55A12575BC4B006632E4 /* DeliveryResponse.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1E55A02575BC4B006632E4 /* DeliveryResponse.swift */; };
 		BB47C0082554771800EC6FB5 /* TargetConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB47C00625546E0500EC6FB5 /* TargetConstants.swift */; };
@@ -78,6 +79,7 @@
 		A61A47AC801172A974D0DB0A /* Pods-AEPTargetTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AEPTargetTests.debug.xcconfig"; path = "Target Support Files/Pods-AEPTargetTests/Pods-AEPTargetTests.debug.xcconfig"; sourceTree = "<group>"; };
 		AE18F68D21AC04DBA3C71C11 /* Pods_AEPTargetTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_AEPTargetTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		BB0C91492575F72200F635B8 /* TargetState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TargetState.swift; sourceTree = "<group>"; };
+		BB0C915A25775F1100F635B8 /* TargetError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TargetError.swift; sourceTree = "<group>"; };
 		BB1E55882574A35A006632E4 /* TargetParameters+Internal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TargetParameters+Internal.swift"; sourceTree = "<group>"; };
 		BB1E55A02575BC4B006632E4 /* DeliveryResponse.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeliveryResponse.swift; sourceTree = "<group>"; };
 		BB47C00625546E0500EC6FB5 /* TargetConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TargetConstants.swift; sourceTree = "<group>"; };
@@ -147,6 +149,7 @@
 				BB9C8706255EF202007AEF8B /* DeliveryRequest.swift */,
 				BB1E55A02575BC4B006632E4 /* DeliveryResponse.swift */,
 				BB0C91492575F72200F635B8 /* TargetState.swift */,
+				BB0C915A25775F1100F635B8 /* TargetError.swift */,
 			);
 			path = Sources;
 			sourceTree = "<group>";
@@ -405,6 +408,7 @@
 				78851419255322CB008E6999 /* Target+PublicAPI.swift in Sources */,
 				BB9C8707255EF203007AEF8B /* DeliveryRequest.swift in Sources */,
 				BB47C01025547D8300EC6FB5 /* TargetProduct.swift in Sources */,
+				BB0C915B25775F1100F635B8 /* TargetError.swift in Sources */,
 				7885141425532281008E6999 /* Target.swift in Sources */,
 				BB9C871A25623723007AEF8B /* TargetOrder+Internal.swift in Sources */,
 				BB47C01225547DAE00EC6FB5 /* TargetRequest.swift in Sources */,
