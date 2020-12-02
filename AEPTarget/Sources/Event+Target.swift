@@ -15,15 +15,10 @@ import Foundation
 
 extension Event {
     var prefetchObjectArray: [TargetPrefetch]? {
-        guard let prefetchDictArray = data?[TargetConstants.EventDataKeys.PREFETCH_REQUESTS] as? [[String: Any]], prefetchDictArray.count > 0 else {
-            return nil
-        }
-        var array = [TargetPrefetch]()
-        for dict in prefetchDictArray {
-            if let prefetchObject = TargetPrefetch.from(dictionary: dict) {
-                array.append(prefetchObject)
-            }
-        }
-        return array
+        return TargetPrefetch.from(dicts: data?[TargetConstants.EventDataKeys.PREFETCH_REQUESTS] as? [[String: Any]])
+    }
+
+    var targetParameters: TargetParameters? {
+        TargetParameters.from(dictionary: data?[TargetConstants.EventDataKeys.TARGET_PARAMETERS] as? [String: Any])
     }
 }

@@ -87,12 +87,12 @@ public class Target: NSObject, Extension {
             return
         }
 
-        guard let targetPrefetchArray = TargetPrefetch.from(dicts: event.data?[TargetConstants.EventDataKeys.PREFETCH_REQUESTS] as? [[String: Any]]) else {
+        guard let targetPrefetchArray = event.prefetchObjectArray else {
             dispatchPrefetchErrorEvent(triggerEvent: event, errorMessage: "Empty or null prefetch requests list")
             return
         }
 
-        let targetParameters = TargetParameters.from(dictionary: event.data?[TargetConstants.EventDataKeys.TARGET_PARAMETERS] as? [String: Any])
+        let targetParameters = event.targetParameters
 
         guard let configurationSharedState = getSharedState(extensionName: TargetConstants.CONFIGURATION.EXTENSION_NAME, event: event)?.value else {
             dispatchPrefetchErrorEvent(triggerEvent: event, errorMessage: "Missing shared state - configuration")
