@@ -21,6 +21,8 @@ enum TargetConstants {
     static let DEFAULT_SESSION_TIMEOUT: Int = 30 * 60 // 30 mins
     static let DELIVERY_API_URL_BASE = "https://%@/rest/v1/delivery/?client=%@&sessionId=%@"
     static let API_URL_HOST_BASE = "%s.tt.omtrdc.net"
+    static let HEADER_CONTENT_TYPE = "Content-Type"
+    static let HEADER_CONTENT_TYPE_JSON = "application/json"
 
     enum StorageKeys {
         static let SESSION_TIMESTAMP = "SESSION_TIMESTAMP"

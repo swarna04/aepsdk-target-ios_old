@@ -20,10 +20,6 @@ public class Target: NSObject, Extension {
 
     private var DEFAULT_NETWORK_TIMEOUT: TimeInterval = 2.0
 
-    private let HEADER_CONTENT_TYPE = "Content-Type"
-
-    private let HEADER_CONTENT_TYPE_JSON = "application/json"
-
     private let targetState: TargetState
 
     private var networkService: Networking {
@@ -113,21 +109,24 @@ public class Target: NSObject, Extension {
             return
         }
 
-        guard let requestJson = DeliveryRequestBuilder.build(tntid: targetState.tntId, thirdPartyId: targetState.thirdPartyId, identitySharedState: identitySharedState, lifecycleSharedState: lifecycleSharedState, targetPrefetchArray: targetPrefetchArray, targetParameters: targetParameters)?.toJSON() else {
+        guard let requestJson = DeliveryRequestBuilder.build(tntId: targetState.tntId, thirdPartyId: targetState.thirdPartyId, identitySharedState: identitySharedState, lifecycleSharedState: lifecycleSharedState, targetPrefetchArray: targetPrefetchArray, targetParameters: targetParameters)?.toJSON() else {
             dispatchPrefetchErrorEvent(triggerEvent: event, errorMessage: "Failed to generate request parameter(JSON) for target delivery API call")
             return
         }
-        let headers = [HEADER_CONTENT_TYPE: HEADER_CONTENT_TYPE_JSON]
+        let headers = [TargetConstants.HEADER_CONTENT_TYPE: TargetConstants.HEADER_CONTENT_TYPE_JSON]
 
         let targetServer = configurationSharedState[TargetConstants.CONFIGURATION.SharedState.Keys.TARGET_SERVER] as? String
         guard let clientCode = configurationSharedState[TargetConstants.CONFIGURATION.SharedState.Keys.TARGET_CLIENT_CODE] as? String else {
-            dispatchPrefetchErrorEvent(triggerEvent: event, errorMessage: "???")
+            dispatchPrefetchErrorEvent(triggerEvent: event, errorMessage: "Missing client code")
             return
         }
 
-        let url = generateTargetDeliveryURL(targetServer: targetServer, clientCode: clientCode)
+        guard let url = URL(string: generateTargetDeliveryURL(targetServer: targetServer, clientCode: clientCode)) else {
+            dispatchPrefetchErrorEvent(triggerEvent: event, errorMessage: "Failed to generate the url for target API call")
+            return
+        }
         // https://developers.adobetarget.com/api/delivery-api/#tag/Delivery-API
-        let request = NetworkRequest(url: URL(string: url)!, httpMethod: .post, connectPayload: requestJson, httpHeaders: headers, connectTimeout: DEFAULT_NETWORK_TIMEOUT, readTimeout: DEFAULT_NETWORK_TIMEOUT)
+        let request = NetworkRequest(url: url, httpMethod: .post, connectPayload: requestJson, httpHeaders: headers, connectTimeout: DEFAULT_NETWORK_TIMEOUT, readTimeout: DEFAULT_NETWORK_TIMEOUT)
         stopEvents()
         networkService.connectAsync(networkRequest: request) { connection in
             guard let data = connection.data, let responseDict = try? JSONDecoder().decode([String: AnyCodable].self, from: data), let dict: [String: Any] = AnyCodable.toAnyDictionary(dictionary: responseDict) else {
@@ -149,7 +148,7 @@ public class Target: NSObject, Extension {
             if let mboxes = response.mboxes {
                 var mboxesDictionary = [String: [String: Any]]()
                 for mbox in mboxes {
-                    if let name = mbox[TargetResponse.JSONKeys.MBOXE_NAME] as? String { mboxesDictionary[name] = mbox }
+                    if let name = mbox[TargetResponseConstants.JSONKeys.MBOXE_NAME] as? String { mboxesDictionary[name] = mbox }
                 }
                 if !mboxesDictionary.isEmpty { self.targetState.mergePrefetchedMboxJson(mboxesDictionary: mboxesDictionary) }
             }

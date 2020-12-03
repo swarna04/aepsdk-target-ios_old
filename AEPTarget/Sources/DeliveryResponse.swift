@@ -18,29 +18,29 @@ struct DeliveryResponse {
 
     // Exists in Error response
     var errorMessage: String? {
-        responseJson[TargetResponse.JSONKeys.MESSAGE] as? String
+        responseJson[TargetResponseConstants.JSONKeys.MESSAGE] as? String
     }
 
     var tntId: String? {
-        guard let ids = responseJson[TargetResponse.JSONKeys.ID] as? [String: String] else {
+        guard let ids = responseJson[TargetResponseConstants.JSONKeys.ID] as? [String: String] else {
             return nil
         }
-        return ids[TargetResponse.JSONKeys.TNT_ID]
+        return ids[TargetResponseConstants.JSONKeys.TNT_ID]
     }
 
     var edgeHost: String? {
-        responseJson[TargetResponse.JSONKeys.EDGE_HOST] as? String
+        responseJson[TargetResponseConstants.JSONKeys.EDGE_HOST] as? String
     }
 
     var mboxes: [[String: Any]]? {
-        if let prefetch = responseJson[TargetResponse.JSONKeys.PREFETCH] as? [String: Any], let mboxes = prefetch[TargetResponse.JSONKeys.MBOXES] as? [[String: Any]] {
+        if let prefetch = responseJson[TargetResponseConstants.JSONKeys.PREFETCH] as? [String: Any], let mboxes = prefetch[TargetResponseConstants.JSONKeys.MBOXES] as? [[String: Any]] {
             return mboxes
         }
         return nil
     }
 }
 
-enum TargetResponse {
+enum TargetResponseConstants {
     enum JSONKeys {
         static let MESSAGE = "message"
         static let ID = "id"

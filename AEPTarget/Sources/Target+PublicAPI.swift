@@ -23,7 +23,7 @@ import Foundation
     /// an error object, nil if the prefetch was successful or error description if the prefetch was unsuccessful.
     /// The prefetched mboxes are cached in memory for the current application session and returned when requested.
     /// - Parameters:
-    ///   - prefetchObjectArray: an array of ACPTargetPrefetch objects representing the desired mboxes to prefetch
+    ///   - prefetchObjectArray: an array of AEPTargetPrefetch objects representing the desired mboxes to prefetch
     ///   - targetParameters: a TargetParameters object containing parameters for all the mboxes in the request array
     ///   - completion: the callback `closure` which will be called after the prefetch is complete.  The parameter in the callback will be nil if the prefetch completed successfully, or will contain error message otherwise
     @objc(prefetchContent:withParameters:callback:)
@@ -74,7 +74,7 @@ import Foundation
     /// Each object in the array contains a callback function, which will be invoked when content is available for
     /// its given mbox location.
     /// - Parameters:
-    ///   - requests:  An array of ACPTargetRequestObject objects to retrieve content
+    ///   - requests:  An array of AEPTargetRequestObject objects to retrieve content
     ///   - targetParameters: a TargetParameters object containing parameters for all locations in the requests array
     static func retrieveLocationContent(requests: [TargetRequest], targetParameters: TargetParameters) {
         // TODO: need to verify input parameters
@@ -87,7 +87,7 @@ import Foundation
     /// Sets the custom visitor ID for Target.
     /// Sets a custom ID to identify visitors (profiles). This ID is preserved between app upgrades,
     /// is saved and restored during the standard application backup process, and is removed at uninstall or
-    /// when ACPTarget::resetExperience is called.
+    /// when AEPTarget::resetExperience is called.
     /// - Parameter thirdPartyId: a string pointer containing the value of the third party id (custom visitor id)
     static func setThirdPartyId(_ id: String) {
         // TODO: need to verify input parameters
@@ -110,7 +110,7 @@ import Foundation
     /// Mobile SDK after a successful call to prefetch content or load requests.
     ///
     /// This ID is preserved between app upgrades, is saved and restored during the standard application
-    /// backup process, and is removed at uninstall or when ACPTarget::resetExperience is called.
+    /// backup process, and is removed at uninstall or when AEPTarget::resetExperience is called.
     ///
     /// - Parameter completion:  the callback `closure` invoked with the current tnt id or `nil` if no tnt id is set.
     static func getTntId(completion _: (String) -> Void) {
@@ -129,7 +129,7 @@ import Foundation
     }
 
     /// Clears prefetched mboxes.
-    /// Clears the cached prefetched ACPTargetPrefetchObject array.
+    /// Clears the cached prefetched AEPTargetPrefetchObject array.
     static func clearPrefetchCache() {
         let eventData = [TargetConstants.EventDataKeys.CLEAR_PREFETCH_CACHE: true]
         let event = Event(name: TargetConstants.EventName.CLEAR_PREFETCH_CACHE, type: EventType.target, source: EventSource.requestReset, data: eventData)
