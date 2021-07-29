@@ -190,8 +190,10 @@ class TargetState {
             var mboxNode = mbox.value
             if !name.isEmpty, prefetchedMboxJsonDicts[name] == nil {
                 // remove not accepted keys
-                for key in LOADED_MBOX_ACCEPTED_KEYS {
-                    mboxNode.removeValue(forKey: key)
+                for key in mboxNode.keys {
+                    if !LOADED_MBOX_ACCEPTED_KEYS.contains(key) {
+                        mboxNode.removeValue(forKey: key)
+                    }
                 }
                 loadedMboxJsonDicts[name] = mboxNode
             }

@@ -78,13 +78,19 @@ enum TargetConstants {
         static let IGNORED_SESSION_LENGTH = "a.ignoredSessionLength"
     }
 
+    enum TargetResponse {
+        static let RESPONSE_TOKENS = "responseTokens"
+        static let ANALYTICS_PAYLOAD = "analytics.payload"
+        static let CLICK_METRIC_ANALYTICS_PAYLOAD = "clickmetric.analytics.payload"
+    }
+
     enum TargetJson {
         static let OPTIONS = "options"
         static let PARAMETERS = "parameters"
         static let METRICS = "metrics"
         static let HTML = "html"
         static let JSON = "json"
-        static let ANALYTICS_PARAMETERS = "analytics"
+        static let ANALYTICS = "analytics"
         static let ANALYTICS_PAYLOAD = "payload"
         /// For A4T requests event data.
         static let SESSION_ID = "a.target.sessionId"
@@ -116,6 +122,7 @@ enum TargetConstants {
         enum Option {
             static let TYPE = "type"
             static let CONTENT = "content"
+            static let RESPONSE_TOKENS = "responseTokens"
         }
     }
 
@@ -184,6 +191,7 @@ enum TargetConstants {
         static let PRODUCT_PARAMETERS = "productparameters"
         static let PROFILE_PARAMETERS = "profileparameters"
         static let TARGET_CONTENT = "content"
+        static let TARGET_DATA_PAYLOAD = "data"
         static let TARGET_RESPONSE_PAIR_ID = "responsePairId"
         static let TARGET_RESPONSE_EVENT_ID = "responseEventId"
         // shared sate

@@ -325,7 +325,9 @@ public class Target: NSObject, Extension {
                 continue
             }
 
-            dispatchAnalyticsForTargetRequest(payload: getAnalyticsForTargetPayload(mboxJson: mboxJson, sessionId: targetState.sessionId))
+            if let analyticsPayload = getAnalyticsForTargetPayload(json: mboxJson) {
+                dispatchAnalyticsForTargetRequest(payload: preprocessAnalyticsPayload(analyticsPayload, sessionId: targetState.sessionId))
+            }
         }
 
         if targetState.notifications.isEmpty {
@@ -375,25 +377,14 @@ public class Target: NSObject, Extension {
             return
         }
 
-        guard let metrics = mboxJson[TargetConstants.TargetJson.METRICS] as? [[String: Any?]?] else {
+        let metric = extractClickMetric(mboxJson: mboxJson)
+        guard metric.token != nil else {
             Log.warning(label: Target.LOG_TAG, "\(TargetError.ERROR_CLICK_NOTIFICATION_SEND_FAILED) \(TargetError.ERROR_NO_CLICK_METRICS) \(mboxName).")
             return
         }
 
-        var clickMetricFound = false
-
-        for metricItem in metrics {
-            guard let metric = metricItem, TargetConstants.TargetJson.MetricType.CLICK == metric[TargetConstants.TargetJson.Metric.TYPE] as? String, let token = metric[TargetConstants.TargetJson.Metric.EVENT_TOKEN] as? String, !token.isEmpty else {
-                continue
-            }
-
-            clickMetricFound = true
-            break
-        }
-
-        if !clickMetricFound {
-            Log.warning(label: Target.LOG_TAG, "\(TargetError.ERROR_CLICK_NOTIFICATION_SEND_FAILED) \(TargetError.ERROR_NO_CLICK_METRIC_FOUND) \(mboxName).")
-            return
+        if let analyticsPayload = metric.analyticsPayload {
+            dispatchAnalyticsForTargetRequest(payload: preprocessAnalyticsPayload(analyticsPayload, sessionId: targetState.sessionId))
         }
 
         // bail out if the target configuration is not available or if the privacy is opted-out
@@ -509,13 +500,21 @@ public class Target: NSObject, Extension {
         }
 
         for targetRequest in batchRequests {
-            var content = ""
-            if let mboxJson = mboxesDictionary[targetRequest.name] {
-                content = extractMboxContent(mboxJson: mboxJson) ?? targetRequest.defaultContent
-                let payload = getAnalyticsForTargetPayload(mboxJson: mboxJson, sessionId: targetState.sessionId)
-                dispatchAnalyticsForTargetRequest(payload: payload)
+            guard let mboxJson = mboxesDictionary[targetRequest.name] else {
+                dispatchMboxContent(event: event, content: targetRequest.defaultContent, data: nil, responsePairId: targetRequest.responsePairId)
+                continue
             }
-            dispatchMboxContent(event: event, content: content, responsePairId: targetRequest.responsePairId)
+
+            let (content, responseTokens) = extractMboxContentAndResponseTokens(mboxJson: mboxJson)
+            let analyticsPayload = getAnalyticsForTargetPayload(json: mboxJson)
+
+            if let payload = analyticsPayload {
+                dispatchAnalyticsForTargetRequest(payload: preprocessAnalyticsPayload(payload, sessionId: targetState.sessionId))
+            }
+            let clickmetric = extractClickMetric(mboxJson: mboxJson)
+            let responsePayload = packageMboxResponsePayload(responseTokens: responseTokens, analyticsPayload: analyticsPayload, metricsAnalyticsPayload: clickmetric.analyticsPayload)
+
+            dispatchMboxContent(event: event, content: content ?? targetRequest.defaultContent, data: responsePayload, responsePairId: targetRequest.responsePairId)
         }
     }
 
@@ -659,7 +658,9 @@ public class Target: NSObject, Extension {
         let request = NetworkRequest(url: url, httpMethod: .post, connectPayload: requestJson, httpHeaders: headers, connectTimeout: timeout, readTimeout: timeout)
 
         stopEvents()
+        Log.debug(label: Target.LOG_TAG, "Sending Target request with url: \(url.absoluteString) and body: \(requestJson).")
         networkService.connectAsync(networkRequest: request) { connection in
+            Log.debug(label: Target.LOG_TAG, "Target response is received with code: \(connection.responseCode ?? -1) and data: \(connection.responseString ?? "").")
             self.targetState.updateSessionTimestamp()
             if let completionHandler = completionHandler {
                 completionHandler(connection)
@@ -759,18 +760,27 @@ public class Target: NSObject, Extension {
     ///     - batchRequests: `[TargetRequests]` to return the default content
     private func runDefaultCallbacks(event: Event, batchRequests: [TargetRequest]) {
         for request in batchRequests {
-            dispatchMboxContent(event: event, content: request.defaultContent, responsePairId: request.responsePairId)
+            dispatchMboxContent(event: event, content: request.defaultContent, data: nil, responsePairId: request.responsePairId)
         }
     }
 
     /// Dispatches the Target Response Content Event.
     /// - Parameters:
-    ///     - content: the target content
+    ///     - content: the target content.
+    ///     - data: the target data payload containing one or more of response tokens, analytics payload and click tracking analytics payload.
     ///     - pairId: the pairId of the associated target request content event.
-    private func dispatchMboxContent(event: Event, content: String, responsePairId: String) {
+    private func dispatchMboxContent(event: Event, content: String, data: [String: Any]?, responsePairId: String) {
         Log.trace(label: Target.LOG_TAG, "dispatchMboxContent - " + TargetError.ERROR_TARGET_EVENT_DISPATCH_MESSAGE)
 
-        let responseEvent = Event(name: TargetConstants.EventName.TARGET_REQUEST_RESPONSE, type: EventType.target, source: EventSource.responseContent, data: [TargetConstants.EventDataKeys.TARGET_CONTENT: content, TargetConstants.EventDataKeys.TARGET_RESPONSE_PAIR_ID: responsePairId, TargetConstants.EventDataKeys.TARGET_RESPONSE_EVENT_ID: event.id.uuidString])
+        let responseEvent = Event(name: TargetConstants.EventName.TARGET_REQUEST_RESPONSE,
+                                  type: EventType.target,
+                                  source: EventSource.responseContent,
+                                  data: [
+                                      TargetConstants.EventDataKeys.TARGET_CONTENT: content,
+                                      TargetConstants.EventDataKeys.TARGET_DATA_PAYLOAD: data as Any,
+                                      TargetConstants.EventDataKeys.TARGET_RESPONSE_PAIR_ID: responsePairId,
+                                      TargetConstants.EventDataKeys.TARGET_RESPONSE_EVENT_ID: event.id.uuidString,
+                                  ])
         dispatch(event: responseEvent)
     }
 
@@ -787,26 +797,33 @@ public class Target: NSObject, Extension {
             }
             Log.debug(label: Target.LOG_TAG, "processCachedTargetRequest - Cached mbox found for \(request.name) with data \(cachedMbox.description)")
 
-            let content = extractMboxContent(mboxJson: cachedMbox) ?? request.defaultContent
-            dispatchMboxContent(event: event, content: content, responsePairId: request.responsePairId)
+            let (content, responseTokens) = extractMboxContentAndResponseTokens(mboxJson: cachedMbox)
+            let analyticsPayload = getAnalyticsForTargetPayload(json: cachedMbox)
+            let metrics = extractClickMetric(mboxJson: cachedMbox)
+
+            let responsePayload = packageMboxResponsePayload(responseTokens: responseTokens, analyticsPayload: analyticsPayload, metricsAnalyticsPayload: metrics.analyticsPayload)
+            dispatchMboxContent(event: event, content: content ?? request.defaultContent, data: responsePayload, responsePairId: request.responsePairId)
         }
 
         return requestsToSend
     }
 
-    /// Return Mbox content from mboxJson, if any
+    /// Return Mbox content and response tokens from mboxJson, if any.
     /// - Parameters:
     ///     - mboxJson: `[String: Any]` target response dictionary
-    /// - Returns: `String` mbox content, if any otherwise returns nil
-    private func extractMboxContent(mboxJson: [String: Any]) -> String? {
+    /// - Returns: `String` mbox content and `Dictionary` containing response tokens, if any otherwise returns nil
+    private func extractMboxContentAndResponseTokens(mboxJson: [String: Any]) -> (String?, [String: String]?) {
         guard let optionsArray = mboxJson[TargetConstants.TargetJson.OPTIONS] as? [[String: Any?]?] else {
             Log.debug(label: Target.LOG_TAG, "extractMboxContent - unable to extract mbox contents, options array is nil")
-            return nil
+            return (nil, nil)
         }
 
         var contentBuilder: String = ""
+        var responseTokens: [String: String]?
 
         for option in optionsArray {
+            responseTokens = option?[TargetConstants.TargetJson.Option.RESPONSE_TOKENS] as? [String: String]
+
             guard let content = option?[TargetConstants.TargetJson.Option.CONTENT] else {
                 continue
             }
@@ -826,7 +843,7 @@ public class Target: NSObject, Extension {
             }
         }
 
-        return contentBuilder
+        return (contentBuilder, responseTokens)
     }
 
     /// Dispatches an Analytics Event containing the Analytics for Target (A4T) payload
@@ -845,15 +862,28 @@ public class Target: NSObject, Extension {
         MobileCore.dispatch(event: event)
     }
 
-    /// Grabs the a4t payload from the target response and convert the keys to correct format
-    /// Returns an empty `Dictionary` if there are no analytics payload that needs to be sent.
+    /// Preprocesses the analytics for target (a4t) payload received in the Target response for Analytics consumption.
+    /// - Returns: `Dictionary` containing a4t payload with keys in internal format.
+    private func preprocessAnalyticsPayload(_ payload: [String: String], sessionId: String) -> [String: String] {
+        var result: [String: String] = [:]
+
+        for (k, v) in payload {
+            result["&&\(k)"] = v
+        }
+
+        if !sessionId.isEmpty {
+            result[TargetConstants.TargetJson.SESSION_ID] = sessionId
+        }
+
+        return result
+    }
+
+    /// Grabs the analytics for target (a4t) payload from the target response if available.
     /// - Parameters:
-    ///     - mboxJson: A prefetched mbox dictionary
-    ///     - sessionId: session id
-    /// - Returns: `Dictionary` containing a4t payload
-    private func getAnalyticsForTargetPayload(mboxJson: [String: Any], sessionId: String) -> [String: String]? {
-        var payload: [String: String] = [:]
-        guard let analyticsJson = mboxJson[TargetConstants.TargetJson.ANALYTICS_PARAMETERS] as? [String: Any] else {
+    ///     - json: dictionary containing a4t payload.
+    /// - Returns: `Dictionary` containing a4t payload or nil.
+    private func getAnalyticsForTargetPayload(json: [String: Any]) -> [String: String]? {
+        guard let analyticsJson = json[TargetConstants.TargetJson.ANALYTICS] as? [String: Any] else {
             return nil
         }
 
@@ -861,14 +891,61 @@ public class Target: NSObject, Extension {
             return nil
         }
 
-        for (k, v) in payloadJson {
-            payload["&&\(k)"] = v
+        return payloadJson
+    }
+
+    /// Extracts click metric info from the Target response if available.
+    /// - Parameters:
+    ///     - mboxJson: Mbox dictionary.
+    /// - Returns: `Tuple` containing click token and click tracking analytics payload.
+    private func extractClickMetric(mboxJson: [String: Any]) -> (token: String?, analyticsPayload: [String: String]?) {
+        guard let metrics = mboxJson[TargetConstants.TargetJson.METRICS] as? [[String: Any]?] else {
+            return (nil, nil)
         }
 
-        if !sessionId.isEmpty {
-            payload[TargetConstants.TargetJson.SESSION_ID] = sessionId
+        for metricItem in metrics {
+            guard
+                let metric = metricItem,
+                TargetConstants.TargetJson.MetricType.CLICK == metric[TargetConstants.TargetJson.Metric.TYPE] as? String,
+                let token = metric[TargetConstants.TargetJson.Metric.EVENT_TOKEN] as? String,
+                !token.isEmpty
+            else {
+                continue
+            }
+
+            let analyticsPayload = getAnalyticsForTargetPayload(json: metric)
+            return (token, analyticsPayload)
         }
 
-        return payload
+        return (nil, nil)
+    }
+
+    /// Packages response tokens and analytics payload returned in Target response.
+    ///
+    /// If click tracking is enabled for the mbox, analytics payload returned inside metrics for click is also added.
+    /// - Parameters:
+    ///     - responseTokens: dictionary containing response tokens.
+    ///     - analyticsPayload: dictionary containing analytics for target (a4t) payload.
+    ///     - metricsAnalyticsPayload: dictionary containing a4t payload for click metric.
+    /// - Returns: `Dictionary` containing Target payload or nil.
+    private func packageMboxResponsePayload(responseTokens: [String: String]?,
+                                            analyticsPayload: [String: String]?,
+                                            metricsAnalyticsPayload: [String: String]?) -> [String: Any]?
+    {
+        var responsePayload: [String: Any] = [:]
+
+        if let responseTokens = responseTokens {
+            responsePayload[TargetConstants.TargetResponse.RESPONSE_TOKENS] = responseTokens
+        }
+
+        if let analyticsPayload = analyticsPayload {
+            responsePayload[TargetConstants.TargetResponse.ANALYTICS_PAYLOAD] = analyticsPayload
+        }
+
+        if let metricsAnalyticsPayload = metricsAnalyticsPayload {
+            responsePayload[TargetConstants.TargetResponse.CLICK_METRIC_ANALYTICS_PAYLOAD] = metricsAnalyticsPayload
+        }
+
+        return responsePayload.isEmpty ? nil : responsePayload
     }
 }
