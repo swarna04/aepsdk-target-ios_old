@@ -7,7 +7,7 @@ SIMULATOR_ARCHIVE_PATH = ./build/ios_simulator.xcarchive/Products/Library/Framew
 IOS_ARCHIVE_PATH = ./build/ios.xcarchive/Products/Library/Frameworks/
 
 lint-autocorrect:
-	swiftlint autocorrect
+	swiftlint autocorrect --format
 
 lint:
 	swiftlint lint
@@ -16,7 +16,7 @@ check-format:
 	swiftformat --lint AEPTarget/Sources --swiftversion 5.1
 	
 format:
-	swiftformat .
+	swiftformat AEPTarget/Sources --swiftversion 5.1
 
 pod-install:
 	(pod install --repo-update)

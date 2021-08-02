@@ -630,8 +630,8 @@ public class Target: NSObject, Extension {
                                    targetParameters: TargetParameters? = nil,
                                    lifecycleData: [String: Any]? = nil,
                                    identityData: [String: Any]? = nil,
-                                   completionHandler: ((HttpConnection) -> Void)?) -> String?
-    {
+                                   completionHandler: ((HttpConnection) -> Void)?)
+    -> String? {
         let tntId = targetState.tntId
         let thirdPartyId = targetState.thirdPartyId
         let environmentId = Int64(targetState.environmentId)
@@ -930,8 +930,8 @@ public class Target: NSObject, Extension {
     /// - Returns: `Dictionary` containing Target payload or nil.
     private func packageMboxResponsePayload(responseTokens: [String: String]?,
                                             analyticsPayload: [String: String]?,
-                                            metricsAnalyticsPayload: [String: String]?) -> [String: Any]?
-    {
+                                            metricsAnalyticsPayload: [String: String]?)
+    -> [String: Any]? {
         var responsePayload: [String: Any] = [:]
 
         if let responseTokens = responseTokens {

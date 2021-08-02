@@ -106,8 +106,9 @@ class TargetState {
         guard let configuration = configuration else {
             return
         }
-        if let newClientCode = configuration[TargetConstants.Configuration.SharedState.Keys.TARGET_CLIENT_CODE] as? String,
-           newClientCode != clientCode
+        if
+            let newClientCode = configuration[TargetConstants.Configuration.SharedState.Keys.TARGET_CLIENT_CODE] as? String,
+            newClientCode != clientCode
         {
             updateEdgeHost("")
         }
